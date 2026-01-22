@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data input/output
+output/
+*.csv
+*.txt
+*.png
+*.pdf
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
