@@ -181,6 +181,10 @@ def plot_distribution_by_two_groups(df: pd.DataFrame,
 
          if kind == "bar":
             bars = ax.bar(sub.index, sub.values, color=colors)
+            #Set fontsize of x ticks
+            ax.set_xticklabels(ax.get_xticklabels(), fontsize=12, fontweight="regular")
+            #Set fontsize of y ticks
+            ax.set_yticklabels(ax.get_yticklabels(), fontsize=10, fontweight="regular")
             #Remove top and right borders
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -191,11 +195,11 @@ def plot_distribution_by_two_groups(df: pd.DataFrame,
                ax.text(bar.get_x() + bar.get_width()/2,
                      bar.get_height() + total*0.01,
                      f"{int(val)} ({val/total*100:.1f}%)",
-                     ha="center", va="bottom", fontsize=10)
+                     ha="center", va="bottom", fontsize=12)
             if j == 0:
-               ax.set_ylabel(f"{value_col}", fontsize=10, fontweight="regular", labelpad=10)
+               ax.set_ylabel(f"{value_col}", fontsize=12, fontweight="regular", labelpad=10)
             if i == len(groups) - 1:
-               ax.set_xlabel(f"{subgroup}", fontsize=12, fontweight="bold", labelpad=20)
+               ax.set_xlabel(f"{subgroup}", fontsize=14, fontweight="bold", labelpad=20)
 
          elif kind == "pie":
             total = sub.sum()

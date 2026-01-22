@@ -773,6 +773,15 @@ def analyze_projects_data(year: int):
    total_current_proy = current_proy_df['CODIGO_PROYECTO'].nunique()
    proy_data.append(f"Total de proyectos en el año {year}: {total_current_proy}")
 
+   #Filter by RANGO_INICIO equals to previous year
+   mask = proy_df['RANGO_INICIO'].isin([year-1])
+   previous_proy_df = proy_df[mask]
+   total_previous_proy = previous_proy_df['CODIGO_PROYECTO'].nunique()
+   proy_data.append(f"Total de proyectos en el año {year-1}: {total_previous_proy}")
+   #Calculate percentage growth
+   proy_growth = __calculate_percentage_growth(total_previous_proy, total_current_proy)
+   proy_data.append(f"Crecimiento porcentual de proyectos de {year-1} a {year}: {proy_growth:.2f}%")
+
    #Count number of projects by Sede
    proy_sede_df = __count_unique_data_by_column(current_proy_df,
                                                 ['Sede'],
