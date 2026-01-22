@@ -613,6 +613,9 @@ def analyze_publications_data(year: int):
    total_pub_type_prev = pub_type_prev_df['N.Publicaciones'].sum()
    pub_data.append(f"Total de publicaciones por tipo de producto en el año {year-1}: Total -> {total_pub_type_prev}")
    pub_data.append(pub_type_prev_df.to_string(index=False))
+   ch.plot_pie_chart(pub_type_current_df.copy(),
+                     category_col='TIPO_PRODUCTO',
+                     value_col='N.Publicaciones')
 
    #Calculate percentage growth by TIPO_PRODUCTO
    pub_type_growth_df = pd.merge(pub_type_prev_df, pub_type_current_df, 
@@ -799,24 +802,26 @@ def analyze_projects_data(year: int):
                      value_col='N.Proyectos')
    
    #Count number of projects by ODS
+   proy_ods_df = current_proy_df[current_proy_df['Objetivos de Desarrollo Sostenible (ODS)'].notna()]
+   total_proy_ods = proy_ods_df['CODIGO_PROYECTO'].nunique()
+   proy_data.append(f"Total de proyectos asociados a ODS en el año {year}: {total_proy_ods}")
    proy_ods_df = __count_unique_data_by_column(current_proy_df,
                                                 ['Objetivos de Desarrollo Sostenible (ODS)'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
-   total_proy_ods = proy_ods_df['N.Proyectos'].sum()
-   proy_data.append(f"Total de proyectos por ODS en el año {year}: Total -> {total_proy_ods}")
    proy_data.append(proy_ods_df.to_string(index=False))
    ch.plot_horizontal_bar_chart(proy_ods_df,
                               category_col='Objetivos de Desarrollo Sostenible (ODS)',
                               value_col='N.Proyectos')
    
    #Count number of projects by PROGRAMA_VINCULACION
+   proy_prog_df = current_proy_df[current_proy_df['Programa de Vinculación'].notna()]
+   total_proy_prog = proy_prog_df['CODIGO_PROYECTO'].nunique()
+   proy_data.append(f"Total de proyectos asociados a programa de vinculación en el año {year}: {total_proy_prog}")
    proy_prog_df = __count_unique_data_by_column(current_proy_df,
                                                 ['Programa de Vinculación'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
-   total_proy_prog = proy_prog_df['N.Proyectos'].sum()
-   proy_data.append(f"Total de proyectos por programa de vinculación en el año {year}: Total -> {total_proy_prog}")
    proy_data.append(proy_prog_df.to_string(index=False))
    ch.plot_horizontal_bar_chart(proy_prog_df,
                               category_col='Programa de Vinculación',
@@ -831,8 +836,8 @@ if __name__ == '__main__':
    #Step 1: Analyze groups data
    #analyze_groups_data(year=2025)
    #Step 2: Analyze areas data
-   analyze_areas_data(year=2025)
+   #analyze_areas_data(year=2025)
    #Step 3: Analyze publications
    #analyze_publications_data(year=2025)
    #Step 4: Analyze projects
-   #analyze_projects_data(year=2025)
+   analyze_projects_data(year=2025)
