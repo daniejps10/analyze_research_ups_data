@@ -498,14 +498,18 @@ def analyze_areas_data(year: int):
    mask = (merged_areas_df['N.Proyectos'] > 0) & (merged_areas_df['N.Publicaciones'] > 0) & (merged_areas_df['N.Investigadores'] > 0)
    merged_areas_df = merged_areas_df[mask]
    areas_data.append(LINE)
-   areas_data.append("Resumen de áreas CACES involucradas en proyectos y publicaciones con participación de investigadoras:")
+   areas_data.append("Resumen de áreas CACES involucradas en proyectos y publicaciones con participación de investigadores:")
    areas_data.append(merged_areas_df.to_string(index=False))
    #Plot scatter plot
-   ch.plot_scatter_chart(merged_areas_df,
+   ch.plot_scatter_chart_broken_axis(merged_areas_df,
                         x_col='N.Proyectos',
                         y_col='N.Publicaciones',
                         size_col='N.Investigadores',
-                        label_col='AREA_CACES')
+                        label_col='AREA_CACES',
+                        y_break_low=45,
+                        y_break_high=90,
+                        label_x_threshold=4,
+                        label_y_threshold=10)
 
    #Print areas data
    print('\n'.join(areas_data))
@@ -825,10 +829,10 @@ def analyze_projects_data(year: int):
 
 if __name__ == '__main__':
    #Step 1: Analyze groups data
-   analyze_groups_data(year=2025)
+   #analyze_groups_data(year=2025)
    #Step 2: Analyze areas data
    analyze_areas_data(year=2025)
    #Step 3: Analyze publications
-   analyze_publications_data(year=2025)
+   #analyze_publications_data(year=2025)
    #Step 4: Analyze projects
-   analyze_projects_data(year=2025)
+   #analyze_projects_data(year=2025)
