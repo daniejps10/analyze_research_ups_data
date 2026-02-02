@@ -595,7 +595,7 @@ def plot_scatter_chart_broken_axis(
    plt.savefig(f"output/{label_col}_chart.png", dpi=300, bbox_inches="tight")
 
 
-def plot_lines_chart(df: pd.DataFrame,
+def plot_lines_chart_pivot(df: pd.DataFrame,
                      category_col: str,
                      x_label: str = None,
                      y_label: str = None,
@@ -749,3 +749,66 @@ def plot_horizontal_bar_chart(df: pd.DataFrame,
    
    plt.tight_layout()
    plt.savefig(f'output/horizontal_bar_chart_{category_col}.svg', format='svg')
+
+
+def plot_lines_chart(df: pd.DataFrame,
+                     x_col: str,
+                     values_col: str,
+                     x_label: str = None,
+                     y_label: str = None,
+                     linewidth: int = 2,
+                     markersize: int = 6,
+                     color: str = '#003772',
+                     figsize_x: int = 8,
+                     figsize_y: int = 5,
+                     dynamic_ylim: bool = False,
+                     partial_data: bool = True):
+   plt.figure(figsize=(figsize_x, figsize_y))
+   if partial_data:
+      # 1. Separar los datos: todos menos el último, y los dos últimos
+      complete_df = df.iloc[:-1]
+      partial_df = df.iloc[-2:]
+      # 2. Dibujar la línea sólida (Hasta 2024)
+      plt.plot(complete_df[x_col], complete_df[values_col], 
+               marker='o', linestyle='-', linewidth=linewidth, 
+               color=color, markersize=markersize)
+      # 3. Dibujar la línea punteada para el segmento final (2024 a 2025)
+      plt.plot(partial_df[x_col], partial_df[values_col], 
+               marker='o', linestyle='--', linewidth=linewidth, 
+               color=color, alpha=0.8, markersize=markersize)
+   else:
+      plt.plot(df[x_col], df[values_col], marker='o', linestyle='-', 
+            linewidth=linewidth, markersize=markersize, color=color)
+   
+   # Set font of yticks and xticks
+   plt.xticks(fontsize=14, fontweight='regular')
+   plt.yticks(fontsize=14, fontweight='regular')
+   
+   # 2. FIJAR LOS LÍMITES (Esto elimina el 2017 y 2026)
+   plt.xlim(df[x_col].min(), df[x_col].max())
+
+   # 3. Configurar los nombres de los años
+   x_col_values = df[x_col].astype(int).tolist()
+   labels = [str(a) for a in x_col_values]
+
+   # 4. Agregar el asterisco solo si es necesario (al 2025 real)
+   if partial_data:
+      labels[-1] = f"{labels[-1]}*"
+
+   plt.xticks(x_col_values, labels)
+   
+   # Set labels
+   plt.xlabel(x_col if x_label is None else x_label, fontsize=14, fontweight='bold')
+   plt.ylabel(values_col if y_label is None else y_label, fontsize=14, fontweight='bold')
+   # Add padding into x_label and y_label
+   plt.xlabel(plt.gca().get_xlabel(), labelpad=15)
+   plt.ylabel(plt.gca().get_ylabel(), labelpad=15)
+   # Set dynamic ylim
+   if dynamic_ylim:
+      max_val = df[values_col].max()
+      plt.ylim(0, max_val * 1.1)
+   plt.grid(axis='y', linestyle=':', alpha=0.7)
+   plt.gca().spines['top'].set_visible(False)
+   plt.gca().spines['right'].set_visible(False)
+   plt.tight_layout()
+   plt.savefig(f'output/line_chart__{x_col}_{values_col}.svg', format='svg')

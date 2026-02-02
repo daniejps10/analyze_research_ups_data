@@ -1,10 +1,7 @@
-from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
 import numpy as np
-from adjustText import adjust_text  # Import adjustText
 import charts as ch
+import util
 
 LINE = '-'*90
 SGI_STATS_XLSX = 'input/sgi_stats.xlsx'
@@ -18,96 +15,7 @@ ALL_SJR_JCR_PUBLICATIONS_XLSX = 'input/all_publications_sjr_jcr.xlsx'
 SCOPUS_PUB_XLSX = 'input/scopus.xlsx'
 WOS_PUB_XLSX = 'input/savedrecs.xls'
 
-##############################################################################
-# Helpers functions
-##############################################################################
 
-def save_dataframes_to_excel(dataframes_list: list, file_path: str):
-   # Create a Pandas Excel writer using XlsxWriter as the engine
-   with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
-      # Loop through the list and write each DataFrame to a separate sheet
-      for sheet_name, df in dataframes_list:
-         df.to_excel(writer, sheet_name=sheet_name, index=False)
-   print(f"Excel file saved successfully at {file_path}")
-
-def save_txt_file(content: str, file_path: str):
-   with open(file_path, 'w') as file:
-      file.write(content)
-   print(f"Text file saved successfully at {file_path}")
-
-def __calculate_percentage_growth(initial_value: float, end_value: float) -> float:
-   #Apply formula (Vf-Vi)/Vi * 100
-   if initial_value == 0:
-      return 0.0
-   return ((end_value - initial_value) / initial_value) * 100
-
-def __calculate_percentage_growth_df(df: pd.DataFrame,
-                                    col_init_values: str,
-                                    col_end_values: str) -> pd.DataFrame:
-   #Apply formula (Vf-Vi)/Vi * 100
-   df["% Crecimiento"] = df.apply(
-      lambda row: __calculate_percentage_growth(row[col_init_values], row[col_end_values]), axis=1
-   )
-   return df.drop_duplicates()
-
-def __count_unique_data_by_column(df: pd.DataFrame, 
-                                 category_cols: list[str],
-                                 count_col: str,
-                                 new_name_col: str) -> pd.DataFrame:
-   """Count unique values in `count_col` grouped by `category_cols`
-   and calculate the percentage within each category group.
-   """
-
-   # Count unique values
-   count_df = (
-      df.groupby(category_cols)
-         .agg({count_col: "nunique"})
-         .reset_index()
-         .rename(columns={count_col: new_name_col})
-   )
-
-   # Total counts per category (for denominator)
-   totals = (
-      count_df.groupby(category_cols[:-1])[new_name_col].transform("sum")
-      if len(category_cols) > 1 else count_df[new_name_col].sum()
-   )
-
-   # Calculate percentage relative to category
-   count_df["Porcentaje"] = (count_df[new_name_col] / totals) * 100
-
-   return count_df
-
-def __calcula_anual_percentage_growth_df(df: pd.DataFrame,
-                                          init_year: int, 
-                                          end_year: int,
-                                          init_year_col: str = None,
-                                          end_year_col: str = None) -> pd.DataFrame:
-      """
-      Calculates the Compound Annual Growth Rate (CAGR) between two years.
-      """
-      # 1. Standardize column names
-      col_start = init_year if init_year_col is None else init_year_col
-      col_end = end_year if end_year_col is None else end_year_col
-      
-      # 2. Calculate the period (n)
-      # Using (end - start) is standard for annual compounding
-      n_periods = end_year - init_year
-      
-      if n_periods <= 0:
-         raise ValueError("end_year must be greater than init_year")
-
-      # 3. Safe Calculation
-      # We use numpy.where to handle division by zero or negative values if they exist
-      start_vals = df[col_start]
-      end_vals = df[col_end]
-      
-      # CAGR Formula: [(End / Start)^(1/n)] - 1
-      growth_series = (end_vals / start_vals) ** (1 / n_periods) - 1
-      
-      # 4. Clean up results (handle Inf or NaN from division by zero)
-      new_col_name = f"CAGR_{init_year}_{end_year}_%"
-      df[new_col_name] = growth_series.replace([np.inf, -np.inf], np.nan) * 100
-      return df
 
 ##############################################################################
 # Process groups data
@@ -187,7 +95,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
    inv_groups_df = __get_affiliations_data(year=year-1)
    
    #Count researchers by Genero
-   inv_sede_type_title_prev_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_sede_type_title_prev_df = util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Género'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv_prev = inv_sede_type_title_prev_df['N.Investigadores'].sum()
@@ -200,7 +108,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
    inv_groups_df = __get_affiliations_data(year=year)
    
    #Count researchers by Genero
-   inv_sede_type_title_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_sede_type_title_df = util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Género'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_sede_type_title_df['N.Investigadores'].sum()
@@ -208,19 +116,19 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
    groups_data.append(inv_sede_type_title_df.to_string(index=False))
 
    #Calculate percentage growth
-   inv_growth = __calculate_percentage_growth(total_inv_prev, total_inv)
+   inv_growth = util.calculate_percentage_growth(total_inv_prev, total_inv)
    groups_data.append(f"Crecimiento porcentual de investigadores {year-1} a {year}: {inv_growth:.2f}%")
 
    inv_growth_df = pd.merge(inv_sede_type_title_prev_df, inv_sede_type_title_df, 
                            on='Género', suffixes=(f'_{year-1}', f'_{year}'))
-   inv_growth_df = __calculate_percentage_growth_df(inv_growth_df, 
+   inv_growth_df = util.calculate_percentage_growth_df(inv_growth_df, 
                                                       f'N.Investigadores_{year-1}', 
                                                       f'N.Investigadores_{year}')
    groups_data.append(f"Crecimiento porcentual de investigadores por género {year-1} a {year}:")
    groups_data.append(inv_growth_df.to_string(index=False))
 
    #Count researchers by Rol en la UPS
-   inv_gen_rol_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_gen_rol_df = util.count_unique_data_by_column(inv_groups_df, 
                                                    ['Género','Rol en la UPS'], 
                                                    'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_gen_rol_df['N.Investigadores'].sum()
@@ -238,7 +146,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
    
 
    #Count by Gender and Title
-   inv_gender_title_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_gender_title_df = util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Género','Titulo'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_gender_title_df['N.Investigadores'].sum()
@@ -251,7 +159,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
                                  kind="bar")
 
    #Count by Sede, Title and Genero
-   inv_sede_title_gender_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_sede_title_gender_df = util.util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Sede','Titulo','Género'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_sede_title_gender_df['N.Investigadores'].sum()
@@ -264,7 +172,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
                                     value_col="N.Investigadores", 
                                     kind="pie")
    #Count by Sede, Género and Title
-   inv_sede_gender_title_df = __count_unique_data_by_column(inv_groups_df, 
+   inv_sede_gender_title_df = util.util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Sede','Género','Titulo'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_sede_gender_title_df['N.Investigadores'].sum()
@@ -280,7 +188,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
    #Print groups data
    print('\n'.join(groups_data))
    #Save data to txt file
-   save_txt_file('\n'.join(groups_data), f'output/groups_data_{year}.txt')
+   util.save_txt_file('\n'.join(groups_data), f'output/groups_data_{year}.txt')
 
 ##############################################################################
 # Process areas data: projects and publications
@@ -385,7 +293,7 @@ def analyze_areas_data(year: int):
    areas_data.append(f"Total de investigadores que participaron en proyectos {year}: {total_inv_title}")
 
    #Count number of researchers by Titulo
-   inv_proy_title_df = __count_unique_data_by_column(inv_proy_df,
+   inv_proy_title_df = util.count_unique_data_by_column(inv_proy_df,
                                                 ['Titulo'],
                                                 'IDENTIFICADOR',
                                                 'N.Investigadores')
@@ -402,7 +310,7 @@ def analyze_areas_data(year: int):
    proy_df = proy_df[proy_df['CODIGO_PROYECTO'].isin(ids)]
 
    #Count number of projects by AREA_CACES
-   proy_area_df = __count_unique_data_by_column(proy_df,
+   proy_area_df = util.count_unique_data_by_column(proy_df,
                                                 ['AREA_CACES'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
@@ -425,7 +333,7 @@ def analyze_areas_data(year: int):
    areas_data.append(f"Total de investigadores que participaron en publicaciones {year}: {total_pub_inv}")
 
    #Count number of publications by Titulo
-   pub_title_df = __count_unique_data_by_column(pub_df,
+   pub_title_df = util.count_unique_data_by_column(pub_df,
                                                 ['Titulo'],
                                                 'IDENTIFICADOR',
                                                 'N.Investigadores')
@@ -435,7 +343,7 @@ def analyze_areas_data(year: int):
    all_areas.update(pub_title_df['Titulo'].unique().tolist())
 
    #Count number of publications by AREA_CACES
-   pub_area_df = __count_unique_data_by_column(pub_df,
+   pub_area_df = util.count_unique_data_by_column(pub_df,
                                                 ['AREA_CACES'],
                                                 'PRO_CODIGO',
                                                 'N.Publicaciones')
@@ -456,7 +364,7 @@ def analyze_areas_data(year: int):
    combined_inv_area_df = combined_inv_area_df.drop_duplicates(subset=['IDENTIFICADOR'], keep='first')
 
    #Count number of researchers by AREA_CACES
-   inv_area_df = __count_unique_data_by_column(combined_inv_area_df,
+   inv_area_df = util.count_unique_data_by_column(combined_inv_area_df,
                                                 ['AREA_CACES'],
                                                 'IDENTIFICADOR',
                                                 'N.Investigadores')
@@ -465,7 +373,7 @@ def analyze_areas_data(year: int):
    areas_data.append(inv_area_df.to_string(index=False))
    all_areas.update(inv_area_df['AREA_CACES'].unique().tolist())
    #Count number of researchers by ROL_ESPECIFICO
-   inv_role_area_df = __count_unique_data_by_column(combined_inv_area_df,
+   inv_role_area_df = util.count_unique_data_by_column(combined_inv_area_df,
                                                 ['ROL_ESPECIFICO'],
                                                 'IDENTIFICADOR',
                                                 'N.Investigadores')
@@ -473,7 +381,7 @@ def analyze_areas_data(year: int):
    areas_data.append(f"Total de investigadores por rol específico en proyectos y/o publicaciones en el {year}: {total_inv_role}")
    areas_data.append(inv_role_area_df.to_string(index=False))
    #Count number of researchers by Titulo
-   inv_title_area_df = __count_unique_data_by_column(combined_inv_area_df,
+   inv_title_area_df = util.count_unique_data_by_column(combined_inv_area_df,
                                                 ['Titulo'],
                                                 'IDENTIFICADOR',
                                                 'N.Investigadores')
@@ -593,11 +501,11 @@ def analyze_publications_data(year: int):
    pub_data.append(f"Total de publicaciones en el año {year-1}: {total_previous_year_pub}")
 
    #Calculate percentage growth
-   pub_growth = __calculate_percentage_growth(total_previous_year_pub, total_current_year_pub)
+   pub_growth = util.calculate_percentage_growth(total_previous_year_pub, total_current_year_pub)
    pub_data.append(f"Crecimiento porcentual de publicaciones de {year-1} a {year}: {pub_growth:.2f}%")
 
    #Count publications by TIPO_PRODUCTO, current year
-   pub_type_current_df = __count_unique_data_by_column(current_year_pub_df,
+   pub_type_current_df = util.count_unique_data_by_column(current_year_pub_df,
                                                 ['TIPO_PRODUCTO'],
                                                 'CODIGO_PURE',
                                                 'N.Publicaciones')
@@ -606,7 +514,7 @@ def analyze_publications_data(year: int):
    pub_data.append(pub_type_current_df.to_string(index=False))
 
    #Count publications by TIPO_PRODUCTO, previous year
-   pub_type_prev_df = __count_unique_data_by_column(previous_year_pub_df,
+   pub_type_prev_df = util.count_unique_data_by_column(previous_year_pub_df,
                                                 ['TIPO_PRODUCTO'],
                                                 'CODIGO_PURE',
                                                 'N.Publicaciones')
@@ -620,7 +528,7 @@ def analyze_publications_data(year: int):
    #Calculate percentage growth by TIPO_PRODUCTO
    pub_type_growth_df = pd.merge(pub_type_prev_df, pub_type_current_df, 
                            on='TIPO_PRODUCTO', suffixes=(f'_{year-1}', f'_{year}'))
-   pub_type_growth_df = __calculate_percentage_growth_df(pub_type_growth_df, 
+   pub_type_growth_df = util.calculate_percentage_growth_df(pub_type_growth_df, 
                                                       f'N.Publicaciones_{year-1}', 
                                                       f'N.Publicaciones_{year}')
    pub_data.append(f"Crecimiento porcentual de publicaciones por tipo de producto de {year-1} a {year}:")
@@ -634,7 +542,7 @@ def analyze_publications_data(year: int):
    mask = scopus_df['Year'].between(2021, 2025)
    range_scopus_df = scopus_df[mask]
    #Count publications by Year
-   scopus_year_df = __count_unique_data_by_column(range_scopus_df,
+   scopus_year_df = util.count_unique_data_by_column(range_scopus_df,
                                                 ['Year'],
                                                 'EID',
                                                 'N.Publicaciones')
@@ -643,8 +551,8 @@ def analyze_publications_data(year: int):
                                                 columns='Year',
                                                 values='N.Publicaciones',
                                                 fill_value=0).reset_index()
-   scopus_year_df = __calculate_percentage_growth_df(scopus_year_df, 2024, 2025)
-   scopus_year_df = __calcula_anual_percentage_growth_df(scopus_year_df, 2021, 2025)
+   scopus_year_df = util.calculate_percentage_growth_df(scopus_year_df, 2024, 2025)
+   scopus_year_df = util.calcula_anual_percentage_growth_df(scopus_year_df, 2021, 2025)
    pub_data.append(LINE)
    pub_data.append("Distribución de publicaciones en Scopus por año:")
    pub_data.append(scopus_year_df.to_string(index=False))
@@ -655,7 +563,7 @@ def analyze_publications_data(year: int):
    mask = wos_df['Publication Year'].between(2021, 2025)
    range_wos_df = wos_df[mask]
    #Count publications by Publication Year
-   wos_year_df = __count_unique_data_by_column(range_wos_df,
+   wos_year_df = util.count_unique_data_by_column(range_wos_df,
                                                 ['Publication Year'],
                                                 'UT (Unique WOS ID)',
                                                 'N.Publicaciones')
@@ -664,8 +572,8 @@ def analyze_publications_data(year: int):
                                           columns='Publication Year',
                                           values='N.Publicaciones',
                                           fill_value=0).reset_index()
-   wos_year_df = __calculate_percentage_growth_df(wos_year_df, 2024, 2025)
-   wos_year_df = __calcula_anual_percentage_growth_df(wos_year_df, 2021, 2025)
+   wos_year_df = util.calculate_percentage_growth_df(wos_year_df, 2024, 2025)
+   wos_year_df = util.calcula_anual_percentage_growth_df(wos_year_df, 2021, 2025)
    pub_data.append(LINE)
    pub_data.append("Distribución de publicaciones en Web of Science por año:")
    pub_data.append(wos_year_df.to_string(index=False))
@@ -694,12 +602,12 @@ def analyze_publications_data(year: int):
                                           fill_value=0).reset_index())
    pub_data.append(LINE)
    #Plot line chart
-   ch.plot_lines_chart(sjr_pivot_df.copy(),
+   ch.plot_lines_chart_pivot(sjr_pivot_df.copy(),
                      category_col='SJR Best Quartile',
                      y_label='N. Publicaciones',
                      )
-   sjr_growth_df = __calculate_percentage_growth_df(sjr_pivot_df, 2024, 2025)
-   sjr_growth_df = __calcula_anual_percentage_growth_df(sjr_growth_df, 2021, 2025)
+   sjr_growth_df = util.calculate_percentage_growth_df(sjr_pivot_df, 2024, 2025)
+   sjr_growth_df = util.calcula_anual_percentage_growth_df(sjr_growth_df, 2021, 2025)
    pub_data.append(f"""Distribución de publicaciones por SJR y año de publicación y 
                      Crecimiento porcentual de publicaciones por SJR Best Quartile de 2024 a 2025:""")
    pub_data.append(sjr_growth_df.to_string(index=False))
@@ -714,11 +622,11 @@ def analyze_publications_data(year: int):
                                           fill_value=0).reset_index())
    pub_data.append(LINE)
    #Plot line chart
-   ch.plot_lines_chart(jcr_pivot_df.copy(),
+   ch.plot_lines_chart_pivot(jcr_pivot_df.copy(),
                      category_col='JIF Quartile',
                      y_label='N. Publicaciones')
-   jcr_growth_df = __calculate_percentage_growth_df(jcr_pivot_df, 2024, 2025)
-   jcr_growth_df = __calcula_anual_percentage_growth_df(jcr_growth_df, 2021, 2025)
+   jcr_growth_df = util.calculate_percentage_growth_df(jcr_pivot_df, 2024, 2025)
+   jcr_growth_df = util.calcula_anual_percentage_growth_df(jcr_growth_df, 2021, 2025)
    pub_data.append(f"""Distribución de publicaciones por JCR y año de publicación y 
                      Crecimiento porcentual de publicaciones por JCR Quartile de 2024 a 2025:""")
    pub_data.append(jcr_growth_df.to_string(index=False))
@@ -742,15 +650,15 @@ def analyze_publications_data(year: int):
                                                 values='CITAS',
                                                 fill_value=0).reset_index()
    print(citations_year_df)
-   citations_year_df = __calculate_percentage_growth_df(citations_year_df, 2024.0, 2025.0)
-   citations_year_df = __calcula_anual_percentage_growth_df(citations_year_df, 2021.0, 2025.0)
+   citations_year_df = util.calculate_percentage_growth_df(citations_year_df, 2024.0, 2025.0)
+   citations_year_df = util.calcula_anual_percentage_growth_df(citations_year_df, 2021.0, 2025.0)
    pub_data.append(LINE)
    pub_data.append("Distribución de citas en Scopus por año:")
    pub_data.append(citations_year_df.to_string(index=False))
 
    #Save data to txt file
    print('\n'.join(pub_data))
-   save_txt_file('\n'.join(pub_data), f'output/publications_data_{year}.txt')
+   util.save_txt_file('\n'.join(pub_data), f'output/publications_data_{year}.txt')
 
 ##############################################################################
 # Process projects data
@@ -786,11 +694,11 @@ def analyze_projects_data(year: int):
    total_previous_proy = previous_proy_df['CODIGO_PROYECTO'].nunique()
    proy_data.append(f"Total de proyectos en el año {year-1}: {total_previous_proy}")
    #Calculate percentage growth
-   proy_growth = __calculate_percentage_growth(total_previous_proy, total_current_proy)
+   proy_growth = util.calculate_percentage_growth(total_previous_proy, total_current_proy)
    proy_data.append(f"Crecimiento porcentual de proyectos de {year-1} a {year}: {proy_growth:.2f}%")
 
    #Count number of projects by Sede
-   proy_sede_df = __count_unique_data_by_column(current_proy_df,
+   proy_sede_df = util.count_unique_data_by_column(current_proy_df,
                                                 ['Sede'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
@@ -805,7 +713,7 @@ def analyze_projects_data(year: int):
    proy_ods_df = current_proy_df[current_proy_df['Objetivos de Desarrollo Sostenible (ODS)'].notna()]
    total_proy_ods = proy_ods_df['CODIGO_PROYECTO'].nunique()
    proy_data.append(f"Total de proyectos asociados a ODS en el año {year}: {total_proy_ods}")
-   proy_ods_df = __count_unique_data_by_column(current_proy_df,
+   proy_ods_df = util.count_unique_data_by_column(current_proy_df,
                                                 ['Objetivos de Desarrollo Sostenible (ODS)'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
@@ -818,7 +726,7 @@ def analyze_projects_data(year: int):
    proy_prog_df = current_proy_df[current_proy_df['Programa de Vinculación'].notna()]
    total_proy_prog = proy_prog_df['CODIGO_PROYECTO'].nunique()
    proy_data.append(f"Total de proyectos asociados a programa de vinculación en el año {year}: {total_proy_prog}")
-   proy_prog_df = __count_unique_data_by_column(current_proy_df,
+   proy_prog_df = util.count_unique_data_by_column(current_proy_df,
                                                 ['Programa de Vinculación'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
@@ -830,7 +738,45 @@ def analyze_projects_data(year: int):
    #Print projects data
    print('\n'.join(proy_data))
    #Save data to txt file
-   save_txt_file('\n'.join(proy_data), f'output/projects_data_{year}.txt')
+   util.save_txt_file('\n'.join(proy_data), f'output/projects_data_{year}.txt')
+
+def generate_rector_book_graphs():
+   book_data = []
+   book_data.append(LINE)
+   #Method to generate graphs for rector's book
+   print("Generating graphs for rector's book...")
+   #Graphs of publications data
+   #####################################################################################
+   #Read all publications data
+   all_pure_pub_df = __get_all_publications_data()
+   #Count publications by ANIO_PUBLICACION
+   pub_year_df = util.count_unique_data_by_column(all_pure_pub_df,
+                                                ['ANIO_PUBLICACION'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   #Filter years between 2018 and 2025
+   mask = pub_year_df['ANIO_PUBLICACION'].between(2018, 2025)
+   pub_year_df = pub_year_df[mask]
+   #Plot line chart
+   ch.plot_lines_chart(pub_year_df.copy(),
+                     x_col='ANIO_PUBLICACION',
+                     x_label='Año',
+                     values_col='N.Publicaciones',
+                     linewidth=4,
+                     markersize=10,
+                     figsize_x=10,
+                     figsize_y=7,
+                     dynamic_ylim=True)
+   book_data.append("Gráfico de publicaciones por año de publicación.")
+   #Calculate percentage growth
+   pub_year_growth_df = util.calculate_growth_cagr_acumulative_df(pub_year_df, 
+                                                                  'ANIO_PUBLICACION', 
+                                                                  'N.Publicaciones', 2021)
+   book_data.append(pub_year_growth_df.to_string(index=False))
+
+   #Save data to txt file
+   print('\n'.join(book_data))
+   util.save_txt_file('\n'.join(book_data), f'output/rector_book_graphs.txt')
 
 if __name__ == '__main__':
    #Step 1: Analyze groups data
@@ -840,4 +786,6 @@ if __name__ == '__main__':
    #Step 3: Analyze publications
    #analyze_publications_data(year=2025)
    #Step 4: Analyze projects
-   analyze_projects_data(year=2025)
+   #analyze_projects_data(year=2025)
+   #Step 5: Generate graphs for rector's book
+   generate_rector_book_graphs()
