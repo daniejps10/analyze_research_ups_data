@@ -747,14 +747,14 @@ def plot_lines_chart(df: pd.DataFrame,
       # 2. Dibujar la línea sólida (Hasta 2024)
       plt.plot(complete_df[x_col], complete_df[values_col], 
                marker='o', linestyle='-', linewidth=linewidth, 
-               color=color, markersize=markersize, zorder=5)
+               color=color, markersize=markersize, clip_on=False)
       # 3. Dibujar la línea punteada para el segmento final (2024 a 2025)
       plt.plot(partial_df[x_col], partial_df[values_col], 
                marker='o', linestyle='--', linewidth=linewidth, 
-               color=color, alpha=0.8, markersize=markersize, zorder=5)
+               color=color, alpha=0.8, markersize=markersize, clip_on=False)
    else:
       plt.plot(df[x_col], df[values_col], marker='o', linestyle='-', 
-            linewidth=linewidth, markersize=markersize, color=color, zorder=5)
+            linewidth=linewidth, markersize=markersize, color=color, clip_on=False)
    
    # Set font of yticks and xticks
    plt.xticks(fontsize=14, fontweight='regular')
@@ -769,6 +769,7 @@ def plot_lines_chart(df: pd.DataFrame,
       labels[-1] = f"{labels[-1]}*"
 
    plt.xticks(x_col_values, labels)
+   plt.xlim(df[x_col].min() - 0.2, df[x_col].max() + 0.2)
    
    # Set labels
    plt.xlabel(x_col if x_label is None else x_label, fontsize=14, fontweight='bold')
@@ -831,7 +832,7 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                   color=colors_dict[category], 
                   linewidth=2.5, 
                   markersize=10,
-                  zorder=5)
+                  clip_on=False)
          # Plot dashed line for last segment
          plt.plot(x_indices[-2:], df_plot.loc[category].iloc[-2:], 
                   marker=markers, 
@@ -841,7 +842,7 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                   linestyle='--', 
                   alpha=0.8,
                   markersize=10,
-                  zorder=5)
+                  clip_on=False)
       else:
          plt.plot(x_indices, df_plot.loc[category], 
                marker=markers, 
@@ -849,7 +850,7 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                color=colors_dict[category], 
                linewidth=2.5, 
                markersize=10,
-               zorder=5)
+               clip_on=False)
 
    # 4. Formatting
    if y_label is not None:
@@ -860,7 +861,6 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
    # Dynamic ylim: Adjust based on data max to avoid cutting off lines
    max_val = df_plot.max().max()
    plt.ylim(0, max_val * 1.1)
-
    
    # X-axis ticks
    x_values = [str(x) for x in x_values]

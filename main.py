@@ -899,9 +899,6 @@ def generate_rector_book_graphs():
       type_pub_df = count_pub_type_df[count_pub_type_df['TIPO_PRODUCTO'].isin([pub_type])]
       #Drop TIPO_PRODUCTO column
       type_pub_df = type_pub_df.drop(columns=['TIPO_PRODUCTO']).drop_duplicates()
-      book_data.append(LINE)
-      book_data.append(f"Publicaciones por año de publicación - Tipo de producto: {pub_type}.")
-      book_data.append(type_pub_df.to_string(index=False))
 
       #Plot line chart
       ch.plot_lines_chart(type_pub_df.copy(),
@@ -915,6 +912,13 @@ def generate_rector_book_graphs():
                         markersize=10,
                         dynamic_ylim=True,
                         fig_name=f'publicaciones_tipo_{pub_type}')
+      #Calculate percentage growth
+      type_pub_df = util.calculate_growth_cagr_acumulative_df(type_pub_df, 
+                                                            'ANIO_PUBLICACION', 
+                                                            'N.Publicaciones', 2021)
+      book_data.append(LINE)
+      book_data.append(f"Publicaciones por año de publicación - Tipo de producto: {pub_type}.")
+      book_data.append(type_pub_df.to_string(index=False))
 
    #Count publications by year and type
    pub_type_year_df = util.count_unique_data_by_column(all_pure_pub_df,
@@ -1166,9 +1170,6 @@ def generate_rector_book_graphs():
                                                 ['RANGO_INICIO'],
                                                 'CODIGO_PROYECTO',
                                                 'N.Proyectos')
-   book_data.append(LINE)
-   book_data.append("Proyectos por año de inicio.")
-   book_data.append(count_proy_year_df.to_string(index=False))
    #Plot line chart
    ch.plot_lines_chart(count_proy_year_df.copy(),
                      x_col='RANGO_INICIO',
@@ -1180,6 +1181,13 @@ def generate_rector_book_graphs():
                      figsize_y=4,
                      dynamic_ylim=True,
                      y_steps=20)
+   count_proy_year_df = util.calculate_growth_cagr_acumulative_df(count_proy_year_df, 
+                                                            'RANGO_INICIO', 
+                                                            'N.Proyectos', 2021)
+   book_data.append(LINE)
+   book_data.append("Proyectos por año de inicio.")
+   book_data.append(count_proy_year_df.to_string(index=False))
+   
    
    #Filter by RANGO_INICIO 2025
    mask = proy_df['RANGO_INICIO'].isin([2025])
