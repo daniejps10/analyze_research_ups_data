@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
 import charts as ch
+import warnings
 import util
+
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 LINE = '-'*90
 SGI_STATS_XLSX = 'input/sgi_stats.xlsx'
@@ -14,12 +17,20 @@ ALL_PURE_PUBLICATIONS_XLSX = 'input/All_Pure_Publications.xlsx'
 ALL_SJR_JCR_PUBLICATIONS_XLSX = 'input/all_publications_sjr_jcr.xlsx'
 SCOPUS_PUB_XLSX = 'input/scopus.xlsx'
 WOS_PUB_XLSX = 'input/savedrecs.xls'
+SGI_GROUPS_XLSX = 'input/debug_groups.xlsx'
 
 
 
 ##############################################################################
 # Process groups data
 ##############################################################################
+def __get_groups_data(year: int = 2025) -> pd.DataFrame:
+   #Read all groups data
+   groups_df = pd.read_excel(SGI_GROUPS_XLSX, 
+                           sheet_name='grupos')
+   #Drop duplicates
+   return groups_df.drop_duplicates()
+
 def __get_collaborators_data() -> pd.DataFrame:
    #Read collaborators data
    collaborators_df = pd.read_excel(COLABORATORS_XLSX, sheet_name='Sheet1',
@@ -256,16 +267,18 @@ def __get_inv_proy_data() -> pd.DataFrame:
 
    return inv_proy_df.drop_duplicates()
 
-def __get_publications_data() -> pd.DataFrame:
+def __get_sgi_publications_data() -> pd.DataFrame:
    #Read all publications data
    pub_df = pd.read_excel(SGI_STATS_XLSX,
                                  sheet_name='authors_publications',
                                  converters={'IDENTIFICADOR': str,
+                                             'CODIGO_SCOPUS': str,
                                              'ANIO_PUBLICACION': int})
    pub_df['AREA_CONOCIMIENTO'] = pub_df['AREA_CONOCIMIENTO'].apply(
       lambda x: ' '.join(str(x).strip().split()) if pd.notnull(x) else x
    )
    pub_df['IDENTIFICADOR'] = pub_df['IDENTIFICADOR'].str.replace("'", '')
+   pub_df['CODIGO_SCOPUS'] = pub_df['CODIGO_SCOPUS'].str.replace("'", '')
 
    #Add collaborators info
    pub_df = __add_collaborators_info(pub_df)
@@ -321,7 +334,7 @@ def analyze_areas_data(year: int):
 
    #Analyze publications data
    #####################################################################################
-   pub_df = __get_publications_data()
+   pub_df = __get_sgi_publications_data()
    pub_df = pub_df[pub_df['ANIO_PUBLICACION'].isin([year])]
    pub_df = pub_df[~pub_df['ROL_ESPECIFICO'].isin(['Externo'])]
    pub_df = pub_df[pub_df['INV_CODIGO'].notna()]
@@ -428,7 +441,7 @@ def analyze_areas_data(year: int):
 # Process publications data
 ##############################################################################
 
-def __get_all_publications_data() -> pd.DataFrame:
+def __get_all_pure_publications_data() -> pd.DataFrame:
    #Read all publications data
    pub_df = pd.read_excel(ALL_PURE_PUBLICATIONS_XLSX,
                            sheet_name='Sheet0',
@@ -449,6 +462,16 @@ def __get_all_publications_data() -> pd.DataFrame:
    pub_df = pub_df[mask].drop_duplicates()
    #Replace TIPO_PRODUCTO values
    pub_df['TIPO_PRODUCTO'] = pub_df['TIPO_PRODUCTO'].replace(VALID_PUB_TYPES)
+   #Change campus
+   campus_mapping = {
+      'org2': 'Sede Quito',
+      'org3': 'Sede Guayaquil',
+      'org4': 'Sede Cuenca'
+   }
+
+   # Update only the rows that match your codes
+   pub_df['SEDE_ADMINISTRADOR'] = (pub_df['GRU_CODIGO']
+                                 .map(campus_mapping).fillna(pub_df['SEDE_ADMINISTRADOR']))
 
    return pub_df.drop_duplicates()
 
@@ -488,7 +511,7 @@ def analyze_publications_data(year: int):
    #Analyze publications data
    #####################################################################################
    #Get all publications data
-   all_pure_pub_df = __get_all_publications_data()
+   all_pure_pub_df = __get_all_pure_publications_data()
 
    #Get current year publications
    current_year_pub_df = all_pure_pub_df[all_pure_pub_df['ANIO_PUBLICACION'].isin([year])]
@@ -546,6 +569,16 @@ def analyze_publications_data(year: int):
                                                 ['Year'],
                                                 'EID',
                                                 'N.Publicaciones')
+   ch.plot_lines_chart(scopus_year_df.copy(),
+                     x_col='Year',
+                     values_col='N.Publicaciones',
+                     x_label='Año',
+                     linewidth=4,
+                     markersize=10,
+                     figsize_x=6,
+                     figsize_y=4,
+                     dynamic_ylim=True,
+                     y_steps=50)
    #Transpose dataframe
    scopus_year_df = scopus_year_df.pivot_table(index=None,
                                                 columns='Year',
@@ -567,6 +600,16 @@ def analyze_publications_data(year: int):
                                                 ['Publication Year'],
                                                 'UT (Unique WOS ID)',
                                                 'N.Publicaciones')
+   ch.plot_lines_chart(wos_year_df.copy(),
+                     x_col='Publication Year',
+                     values_col='N.Publicaciones',
+                     x_label='Año',
+                     linewidth=4,
+                     markersize=10,
+                     figsize_x=6,
+                     figsize_y=4,
+                     dynamic_ylim=True,
+                     y_steps=25)
    #Transpose dataframe
    wos_year_df = wos_year_df.pivot_table(index=None,
                                           columns='Publication Year',
@@ -581,7 +624,7 @@ def analyze_publications_data(year: int):
    #Analyze SJR and JCR data
    #####################################################################################
    #Get SJR and JCR data
-   all_pub_df = __get_all_publications_data()
+   all_pub_df = __get_all_pure_publications_data()
    #Filter year_range between 2019 to 2025
    mask = all_pub_df['ANIO_PUBLICACION'].between(2021, 2025)
    all_pub_df = all_pub_df[mask]
@@ -740,6 +783,69 @@ def analyze_projects_data(year: int):
    #Save data to txt file
    util.save_txt_file('\n'.join(proy_data), f'output/projects_data_{year}.txt')
 
+def __get_pub_groups_data() -> pd.DataFrame:
+   #Process data from SCOPUS publications
+   #--------------------------------------------------------------------------------------
+   all_pure_pub_data = __get_all_pure_publications_data()
+   #Keep relevant columns
+   all_pure_pub_data = all_pure_pub_data[['CODIGO_PURE',
+                                          'GRU_CODIGO',
+                                          'SEDE_ADMINISTRADOR']].drop_duplicates()
+   #Get all pure ids
+   pure_ids = all_pure_pub_data['CODIGO_PURE'].unique().tolist()
+
+   #Process data from SGI publications
+   #--------------------------------------------------------------------------------------
+   #Read all publications groups data
+   sgi_pub_groups_df = __get_sgi_publications_data()
+   #Keep relevant columns
+   sgi_pub_groups_df = sgi_pub_groups_df[['PRO_CODIGO',
+                                    'CODIGO_SCOPUS',
+                                    'GRUPO_CODIGO_ADMINISTRADOR',
+                                    'GRUPO_ADMINISTRADOR',
+                                    'SEDE_ADMINISTRADOR']].drop_duplicates()
+   #Map campus
+   campus_dict = {
+      'QUITO': 'Sede Quito',
+      'GUAYAQUIL': 'Sede Guayaquil',
+      'MATRIZ CUENCA': 'Sede Cuenca'
+   }
+   sgi_pub_groups_df['SEDE_ADMINISTRADOR'] = sgi_pub_groups_df['SEDE_ADMINISTRADOR'].map(campus_dict)
+   #Create new columns
+   sgi_pub_groups_df['TEMP_CODE'] = 'ro' + sgi_pub_groups_df['PRO_CODIGO'].astype(str)
+   sgi_pub_groups_df['CODIGO_SCOPUS'] = sgi_pub_groups_df['CODIGO_SCOPUS'].str.replace("2-s2.0-", '', regex=False)
+   sgi_pub_groups_df['CODIGO_PURE'] = sgi_pub_groups_df['CODIGO_SCOPUS'].fillna(sgi_pub_groups_df['TEMP_CODE'])
+   sgi_pub_groups_df['GRU_CODIGO'] = 'orgsgi' + sgi_pub_groups_df['GRUPO_CODIGO_ADMINISTRADOR'].astype(str)
+   #Keep relevant columns
+   sgi_pub_groups_df = sgi_pub_groups_df[['CODIGO_PURE',
+                                    'GRU_CODIGO',
+                                    'SEDE_ADMINISTRADOR']].drop_duplicates()
+   #Filter by pure_ids
+   filter_sgi_pub_groups_df = sgi_pub_groups_df[sgi_pub_groups_df['CODIGO_PURE'].isin(pure_ids)]
+   sgi_ids = filter_sgi_pub_groups_df['CODIGO_PURE'].unique().tolist()
+
+   #Filter all_pure_pub_data by sgi_ids
+   filter_pure_pub_data = all_pure_pub_data[~all_pure_pub_data['CODIGO_PURE'].isin(sgi_ids)]
+   
+   #Combine both dataframes
+   pub_groups_df = pd.concat([filter_sgi_pub_groups_df, filter_pure_pub_data]).drop_duplicates()
+
+   #Add legend group data
+   groups_df = __get_groups_data()
+   groups_df = groups_df[['PURE_ORG_ID', 'GRU_LEYENDA']].drop_duplicates()
+   groups_df = groups_df.rename(columns={'PURE_ORG_ID': 'GRU_CODIGO',
+                                       'GRU_LEYENDA': 'GRUPO_LEYENDA'})
+   pub_groups_df = pub_groups_df.merge(groups_df, on='GRU_CODIGO', how='left')
+   return pub_groups_df.drop_duplicates()
+
+def __get_pure_caces_data_type_df() -> pd.DataFrame:
+   #Read PURE CACES data type
+   pure_caces_df = pd.read_excel(ALL_SJR_JCR_PUBLICATIONS_XLSX,
+                                 sheet_name='caces_pub_proy',
+                                 converters={'CODIGO_PURE': str})
+   pure_caces_df['CODIGO_PURE'] = pure_caces_df['CODIGO_PURE'].str.replace("'", '')
+   return pure_caces_df.drop_duplicates()
+
 def generate_rector_book_graphs():
    book_data = []
    book_data.append(LINE)
@@ -747,8 +853,10 @@ def generate_rector_book_graphs():
    print("Generating graphs for rector's book...")
    #Graphs of publications data
    #####################################################################################
+   #Publications by year
+   #--------------------------------------------------------------------------------------
    #Read all publications data
-   all_pure_pub_df = __get_all_publications_data()
+   all_pure_pub_df = __get_all_pure_publications_data()
    #Count publications by ANIO_PUBLICACION
    pub_year_df = util.count_unique_data_by_column(all_pure_pub_df,
                                                 ['ANIO_PUBLICACION'],
@@ -764,15 +872,137 @@ def generate_rector_book_graphs():
                      values_col='N.Publicaciones',
                      linewidth=4,
                      markersize=10,
-                     figsize_x=10,
-                     figsize_y=7,
-                     dynamic_ylim=True)
-   book_data.append("Gráfico de publicaciones por año de publicación.")
+                     figsize_x=6,
+                     figsize_y=4,
+                     dynamic_ylim=True,
+                     y_steps=100)
+   book_data.append("Publicaciones por año de publicación.")
    #Calculate percentage growth
    pub_year_growth_df = util.calculate_growth_cagr_acumulative_df(pub_year_df, 
                                                                   'ANIO_PUBLICACION', 
                                                                   'N.Publicaciones', 2021)
    book_data.append(pub_year_growth_df.to_string(index=False))
+
+   #Count publications by year and type
+   pub_type_year_df = util.count_unique_data_by_column(all_pure_pub_df,
+                                                ['ANIO_PUBLICACION', 'TIPO_PRODUCTO'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   #Filter years between 2018 and 2025
+   mask = pub_type_year_df['ANIO_PUBLICACION'].between(2018, 2025)
+   pub_type_year_df = pub_type_year_df[mask]
+   book_data.append(LINE)
+   book_data.append("Publicaciones por tipo de producto y año de publicación.")
+   book_data.append(pub_type_year_df.to_string(index=False))
+
+   #Publications by CACES data type
+   #--------------------------------------------------------------------------------------
+   analysis_year = 2025
+   filter_years = [analysis_year-1, analysis_year]
+   #Get all pure publications from analysis years
+   filter_pub_df = all_pure_pub_df[all_pure_pub_df['ANIO_PUBLICACION'].isin(filter_years)]
+   filter_pub_ids = filter_pub_df['CODIGO_PURE'].unique().tolist()
+   book_data.append(LINE)
+   book_data.append(f"Número de registros de publicaciones: {len(filter_pub_df)}")
+   book_data.append(f"Publicaciones únicas -> Rango {filter_years}: {len(filter_pub_ids)}")
+   #Count publications by year
+   pub_year_df = util.count_unique_data_by_column(filter_pub_df,
+                                                ['ANIO_PUBLICACION'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones por año del rango {filter_years}")
+   book_data.append(pub_year_df.to_string(index=False))
+   #Count publications by year and campus
+   pub_campus_df = util.count_unique_data_by_column(filter_pub_df,
+                                                ['ANIO_PUBLICACION', 'SEDE_ADMINISTRADOR'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones por sede del rango {filter_years}")
+   book_data.append(pub_campus_df.to_string(index=False))
+
+   #Get publication groups data
+   pub_groups_df = __get_pub_groups_data()
+   #Extract anio publicacion from all_pure_pub_df
+   pub_groups_df = pub_groups_df.merge(all_pure_pub_df[['CODIGO_PURE', 
+                                                      'ANIO_PUBLICACION', 
+                                                      'TIPO_PRODUCTO']],
+                                       on='CODIGO_PURE', how='left')
+   filter_pub_groups_df = pub_groups_df[pub_groups_df['CODIGO_PURE'].isin(filter_pub_ids)]
+   filter_pub_groups_df.to_excel('output/publication_groups_data.xlsx', index=False)
+   filter_pub_groups_ids = filter_pub_groups_df['CODIGO_PURE'].unique().tolist()
+   book_data.append(LINE)
+   book_data.append(f"Número de registros al expandir las publicaciones por grupos: {len(filter_pub_groups_df)}")
+   book_data.append(f"Publicaciones únicas al expandir las publicaciones por grupos {filter_years}: {len(filter_pub_groups_ids)}")
+   #Count publications by year
+   pub_group_year_df = util.count_unique_data_by_column(filter_pub_groups_df,
+                                                ['ANIO_PUBLICACION'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones por año del rango {filter_years}")
+   book_data.append(pub_group_year_df.to_string(index=False))
+   #Count publications by year and campus
+   pub_group_year_campus_df = util.count_unique_data_by_column(filter_pub_groups_df,
+                                                ['ANIO_PUBLICACION', 'SEDE_ADMINISTRADOR'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones únicas por sede del rango {filter_years}")
+   book_data.append(pub_group_year_campus_df.to_string(index=False))
+   #Count publications by year and type
+   pub_group_year_type_df = util.count_unique_data_by_column(filter_pub_groups_df,
+                                                ['ANIO_PUBLICACION', 'TIPO_PRODUCTO'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones únicas por tipo de producto del rango {filter_years}")
+   book_data.append(pub_group_year_type_df.to_string(index=False))
+
+   #Publications by type: CACES data type
+   #--------------------------------------------------------------------------------------
+   pure_caces_df = __get_pure_caces_data_type_df()
+   CACES_COLS_DICT = {
+      'SJR_Q1': 'SJR Q1',
+      'SJR_Q2': 'SJR Q2',
+      'SJR_Q3': 'SJR Q3',
+      'SJR_Q4': 'SJR Q4',
+      'CONF_Q1_Q2_Q3_Q4': 'Conf. Q1-Q4',
+      'WOS_SCOPUS_NO_QUARTIL': 'Wos/Scopus NQ',
+      'BASES_REGIONALES': 'Bases Regionales',
+      'LATINDEX': 'Latindex',
+      'CAP_LIBROS': 'Cap. Libros',
+      'LIBROS': 'Libros',
+      'OTROS_PUB': 'Otras pub.'
+   }
+   #Rename CACES columns
+   pure_caces_df = pure_caces_df.rename(columns=CACES_COLS_DICT)
+   CACES_COLS = list(CACES_COLS_DICT.values())
+   KEEP_COLS = ['CODIGO_PURE'] + CACES_COLS
+   #Keep relevant columns
+   pure_caces_df = pure_caces_df[KEEP_COLS].drop_duplicates()
+   #Merge with filter_pub_df
+   pub_groups_caces_df = filter_pub_df.merge(pure_caces_df,
+                                             on='CODIGO_PURE', how='left')
+   #Publication year like int type
+   pub_groups_caces_df['ANIO_PUBLICACION'] = pub_groups_caces_df['ANIO_PUBLICACION'].astype(int)
+   pub_groups_caces_ids = pub_groups_caces_df['CODIGO_PURE'].unique().tolist()
+   book_data.append(LINE)
+   book_data.append(f"Número de registros de publicaciones con CACES: {len(pub_groups_caces_df)}")
+   book_data.append(f"Publicaciones únicas con CACES -> Rango {filter_years}: {len(pub_groups_caces_ids)}")
+   #Count CACES data type by product type
+   count_caces_type_df = util.count_unique_data_by_column(pub_groups_caces_df,
+                                                ['ANIO_PUBLICACION', 'TIPO_PRODUCTO'],
+                                                'CODIGO_PURE',
+                                                'N.Publicaciones')
+   book_data.append(f"Publicaciones por tipo de producto y tipo de CACES del rango {filter_years}")
+   book_data.append(count_caces_type_df.to_string(index=False))
+   #Count CACES data type by year
+   count_caces_year_df = pub_groups_caces_df.groupby('ANIO_PUBLICACION')[CACES_COLS].nunique().reset_index()
+   book_data.append(f"Publicaciones por tipo de CACES del rango {filter_years}")
+   book_data.append(count_caces_year_df.to_string(index=False))
+   #Plot stacked bar chart
+   ch.plot_stacked_bar_chart(count_caces_year_df.copy(),
+                           index_col='ANIO_PUBLICACION',
+                           x_label='Año',
+                           y_label='N.Publicaciones',
+                           custom_colors=True)
 
    #Save data to txt file
    print('\n'.join(book_data))

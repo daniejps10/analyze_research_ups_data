@@ -594,62 +594,6 @@ def plot_scatter_chart_broken_axis(
    plt.savefig(f"output/{label_col}_chart.svg", bbox_inches="tight")
    plt.savefig(f"output/{label_col}_chart.png", dpi=300, bbox_inches="tight")
 
-
-def plot_lines_chart_pivot(df: pd.DataFrame,
-                     category_col: str,
-                     x_label: str = None,
-                     y_label: str = None,
-                     figsize_x: int = 6,
-                     figsize_y: int = 4):
-   #1. Set the category column as the index so .loc[category] works
-   df_plot = df.set_index(category_col)
-   
-   # Identify year columns only (exclude the index/category name)
-   x_values = df_plot.columns
-   x_indices  = range(len(x_values))
-   
-   plt.figure(figsize=(figsize_x, figsize_y))
-   markers = 'o'
-
-   categories = df_plot.index.unique()
-   n_categories = len(categories)
-   
-   #2. Assuming get_gradient_cmap is defined elsewhere in your helper utils
-   colors_list = get_gradient_cmap(num_colors=n_categories)
-   colors_dict = {cat: colors_list[i] for i, cat in enumerate(categories)}
-
-   # 3. Plot each row
-   for category in categories:
-      # Use df_plot.loc to get the row values for the years
-      plt.plot(x_indices, df_plot.loc[category], 
-               marker=markers, 
-               label=category, 
-               color=colors_dict[category], 
-               linewidth=2.5, 
-               markersize=10)
-
-   # 4. Formatting
-   if y_label is not None:
-      plt.ylabel(y_label, fontsize=12, fontweight='bold')
-   if x_label is not None:
-      plt.xlabel(x_label, fontsize=12, fontweight='bold')
-   
-   # Dynamic ylim: Adjust based on data max to avoid cutting off lines
-   max_val = df_plot.max().max()
-   plt.ylim(0, max_val * 1.1)
-
-   # X-axis ticks
-   plt.xticks(x_indices, x_values, fontsize=10)
-
-   plt.legend(loc='center left', bbox_to_anchor=(1, 0.7), frameon=False, fontsize=12)
-   plt.grid(axis='y', linestyle=':', alpha=0.7)
-   plt.gca().spines['top'].set_visible(False)
-   plt.gca().spines['right'].set_visible(False)
-
-   plt.tight_layout()
-   plt.savefig(f'output/line_chart_{category_col}.svg', format='svg')
-
-
 def plot_pie_chart(df: pd.DataFrame,
                   category_col: str,
                   value_col: str,
@@ -761,6 +705,7 @@ def plot_lines_chart(df: pd.DataFrame,
                      color: str = '#003772',
                      figsize_x: int = 8,
                      figsize_y: int = 5,
+                     y_steps: int = None,
                      dynamic_ylim: bool = False,
                      partial_data: bool = True):
    plt.figure(figsize=(figsize_x, figsize_y))
@@ -784,14 +729,11 @@ def plot_lines_chart(df: pd.DataFrame,
    plt.xticks(fontsize=14, fontweight='regular')
    plt.yticks(fontsize=14, fontweight='regular')
    
-   # 2. FIJAR LOS LÍMITES (Esto elimina el 2017 y 2026)
+   #Configurate xlim
    plt.xlim(df[x_col].min(), df[x_col].max())
-
-   # 3. Configurar los nombres de los años
    x_col_values = df[x_col].astype(int).tolist()
    labels = [str(a) for a in x_col_values]
-
-   # 4. Agregar el asterisco solo si es necesario (al 2025 real)
+   # Add asterisk to last label if partial data
    if partial_data:
       labels[-1] = f"{labels[-1]}*"
 
@@ -807,8 +749,133 @@ def plot_lines_chart(df: pd.DataFrame,
    if dynamic_ylim:
       max_val = df[values_col].max()
       plt.ylim(0, max_val * 1.1)
+      #Set steps of y axis
+      if y_steps:
+         plt.yticks(np.arange(0, max_val * 1.1, y_steps))
+   
+
    plt.grid(axis='y', linestyle=':', alpha=0.7)
    plt.gca().spines['top'].set_visible(False)
    plt.gca().spines['right'].set_visible(False)
    plt.tight_layout()
    plt.savefig(f'output/line_chart__{x_col}_{values_col}.svg', format='svg')
+
+
+def plot_lines_chart_pivot(df: pd.DataFrame,
+                     category_col: str,
+                     x_label: str = None,
+                     y_label: str = None,
+                     figsize_x: int = 6,
+                     figsize_y: int = 4,
+                     partial_data: bool = True):
+   #1. Set the category column as the index so .loc[category] works
+   df_plot = df.set_index(category_col)
+   
+   # Identify year columns only (exclude the index/category name)
+   x_values = df_plot.columns
+   x_indices  = range(len(x_values))
+   
+   plt.figure(figsize=(figsize_x, figsize_y))
+   markers = 'o'
+
+   categories = df_plot.index.unique()
+   n_categories = len(categories)
+   
+   #2. Assuming get_gradient_cmap is defined elsewhere in your helper utils
+   colors_list = get_gradient_cmap(num_colors=n_categories)
+   colors_dict = {cat: colors_list[i] for i, cat in enumerate(categories)}
+
+   # 3. Plot each row
+   for category in categories:
+      # Use df_plot.loc to get the row values for the years
+      if partial_data:
+         # Plot solid line for all but last point
+         plt.plot(x_indices[:-1], df_plot.loc[category].iloc[:-1], 
+                  marker=markers, 
+                  label=category, 
+                  color=colors_dict[category], 
+                  linewidth=2.5, 
+                  markersize=10)
+         # Plot dashed line for last segment
+         plt.plot(x_indices[-2:], df_plot.loc[category].iloc[-2:], 
+                  marker=markers, 
+                  label=None,  # No label for dashed segment
+                  color=colors_dict[category], 
+                  linewidth=2.5, 
+                  linestyle='--', 
+                  alpha=0.8,
+                  markersize=10)
+      else:
+         plt.plot(x_indices, df_plot.loc[category], 
+               marker=markers, 
+               label=category, 
+               color=colors_dict[category], 
+               linewidth=2.5, 
+               markersize=10)
+
+   # 4. Formatting
+   if y_label is not None:
+      plt.ylabel(y_label, fontsize=12, fontweight='bold')
+   if x_label is not None:
+      plt.xlabel(x_label, fontsize=12, fontweight='bold')
+   
+   # Dynamic ylim: Adjust based on data max to avoid cutting off lines
+   max_val = df_plot.max().max()
+   plt.ylim(0, max_val * 1.1)
+
+   
+   # X-axis ticks
+   x_values = [str(x) for x in x_values]
+   if partial_data:
+      x_values[-1] = f"{x_values[-1]}*"
+   plt.xticks(x_indices, x_values, fontsize=10)
+
+   plt.legend(loc='center left', bbox_to_anchor=(1, 0.7), frameon=False, fontsize=12)
+   plt.grid(axis='y', linestyle=':', alpha=0.7)
+   plt.gca().spines['top'].set_visible(False)
+   plt.gca().spines['right'].set_visible(False)
+
+   plt.tight_layout()
+   plt.savefig(f'output/line_chart_{category_col}.svg', format='svg')
+
+def plot_stacked_bar_chart(df: pd.DataFrame,
+                        index_col: str,
+                        x_label: str,
+                        y_label: str,
+                        figsize_x: int = 8,
+                        figsize_y: int = 6,
+                        custom_colors: bool = False):
+   plt.figure(figsize=(figsize_x, figsize_y))
+   
+   df.set_index(index_col, inplace=True)
+
+   # Colors
+   colors = get_gradient_cmap(num_colors=len(df.columns)) if custom_colors else None
+   
+   # 2. Create the plot
+   # Using a colormap like 'tab20' helps distinguish between 11 different categories
+   ax = df.plot(kind='bar', stacked=True, figsize=(10, 7), 
+               color=colors, 
+               colormap='tab20' if not custom_colors else None,
+               edgecolor='white')
+
+   # 3. Customization
+   plt.xlabel(x_label, fontsize=15, fontweight='bold')
+   plt.ylabel(y_label, fontsize=15, fontweight='bold')
+   #Set fontsize of x ticks and y ticks
+   plt.xticks(fontsize=14, fontweight='regular')
+   plt.yticks(fontsize=14, fontweight='regular')
+
+   #Add padding into x_label and y_label
+   plt.xlabel(plt.gca().get_xlabel(), labelpad=15)
+   plt.ylabel(plt.gca().get_ylabel(), labelpad=15)
+   plt.xticks(rotation=0)
+   plt.grid(axis='y', linestyle=':', alpha=0.7)
+   plt.gca().spines['top'].set_visible(False)
+   plt.gca().spines['right'].set_visible(False)
+
+   #Legend
+   plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12)
+
+   plt.tight_layout()
+   plt.savefig(f'output/stacked_bar_chart_{index_col}.svg', format='svg')
