@@ -51,6 +51,13 @@ def get_gradient_cmap(start_hex="#003772", end_hex="#FCC000", num_colors=256):
    
    return colors
 
+def __save_figure(fig: plt.Figure, filename_base: str):
+   """Save figure in both SVG and PNG formats."""
+   filename_base = filename_base.lower().replace(" ", "_").replace(".", "_")
+   fig.savefig(f"{filename_base}.svg", format="svg", bbox_inches="tight")
+   fig.savefig(f"{filename_base}.png", format="png", dpi=300, bbox_inches="tight")
+   fig.savefig(f"{filename_base}.pdf", format="pdf", bbox_inches="tight")
+
 def plot_distribution_by_group(df: pd.DataFrame, 
                               group_col: str, 
                               category_col: str, 
@@ -121,9 +128,10 @@ def plot_distribution_by_group(df: pd.DataFrame,
                fontsize=16, fontweight="bold", clip_on=False)
 
    plt.tight_layout(h_pad=0.5)
-   #plt.show()
-   #Save figure into svg
-   plt.savefig(f"output/distribution_{group_col}_{category_col}_{value_col}.svg", format="svg")
+   #Save figure into svg and png
+   fig_name = f'output/d_chart_{group_col}_{category_col}_{value_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 
 def plot_distribution_by_two_groups(df: pd.DataFrame, 
@@ -210,13 +218,18 @@ def plot_distribution_by_two_groups(df: pd.DataFrame,
                ax.set_xlabel(f"{subgroup}", fontsize=16, fontweight="bold", labelpad=20)
 
    plt.tight_layout(pad=1.0, h_pad=3.0)
-   #plt.show()
-   #Save figure into svg
-   plt.savefig(f"output/distribution_{group_col}_{subgroup_col}_{category_col}.svg", format="svg")
+
+   #Save into png and svg
+   fig_name = f'output/dist_chart_{group_col}_{subgroup_col}_{category_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_grouped_barchart(df: pd.DataFrame, 
-                        group_col: str, category_col: str, value_col: str, 
-                        xlabel: str = None, ylabel: str = None):
+                        group_col: str, 
+                        category_col: str, 
+                        value_col: str, 
+                        xlabel: str = None, 
+                        ylabel: str = None):
    """
    Plots a grouped bar chart with value and percentage annotations.
    
@@ -291,9 +304,10 @@ def plot_grouped_barchart(df: pd.DataFrame,
    # Adjust layout
    plt.tight_layout()
    
-   #Save figure into svg
-   plt.savefig(f"output/grouped_barchart_{group_col}_{category_col}.svg", format="svg")
-
+   #Save into png and svg
+   fig_name = f'output/g_bar_chart_{group_col}_{category_col}_{value_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_bar_chart(df: pd.DataFrame,
                   group_col: str,
@@ -341,9 +355,10 @@ def plot_bar_chart(df: pd.DataFrame,
                   ha='center', va='bottom', fontsize=10, rotation=0)
    
    plt.tight_layout()
-   #Save figure into svg
-   plt.savefig(f"output/barchart_{category_col}_{value_col}.svg", format="svg")
-
+   #Save into png and svg
+   fig_name = f'output/bar_chart_{category_col}_{value_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def wrap_labels(labels, max_width):
    wrapped_labels = []
@@ -457,8 +472,10 @@ def plot_scatter_chart(
    plt.tight_layout()
 
    # ---------- Save ----------
-   plt.savefig(f"output/{label_col}_chart.svg", bbox_inches="tight")
-   plt.savefig(f"output/{label_col}_chart.png", dpi=300, bbox_inches="tight")
+   #Save into png and svg
+   fig_name = f'output/scatter_chart_{x_col}_{y_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_scatter_chart_broken_axis(
    df: pd.DataFrame,
@@ -591,16 +608,18 @@ def plot_scatter_chart_broken_axis(
    fig.subplots_adjust(top=0.88)
 
    # ---------- Save ----------
-   plt.savefig(f"output/{label_col}_chart.svg", bbox_inches="tight")
-   plt.savefig(f"output/{label_col}_chart.png", dpi=300, bbox_inches="tight")
+   #Save into png and svg
+   fig_name = f'output/scatter_chart_{x_col}_{y_col}'
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_pie_chart(df: pd.DataFrame,
                   category_col: str,
                   value_col: str,
                   figsize_x: int = 6,
-                  figsize_y: int = 6):
+                  figsize_y: int = 6,
+                  fig_name: str = None):
    plt.figure(figsize=(figsize_x, figsize_y))
-   
    # Prepare data
    labels = df[category_col]
    sizes = df[value_col]
@@ -623,8 +642,11 @@ def plot_pie_chart(df: pd.DataFrame,
    
    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
    plt.tight_layout()
-   plt.savefig(f'output/pie_chart_{category_col}.svg', format='svg')
-
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/pie_chart_{category_col}_{value_col}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_vertical_bar_chart(df: pd.DataFrame,
                         category_col: str,
@@ -658,13 +680,18 @@ def plot_vertical_bar_chart(df: pd.DataFrame,
    plt.gca().spines['right'].set_visible(False)
    
    plt.tight_layout()
-   plt.savefig(f'output/vertical_bar_chart_{category_col}.svg', format='svg')
-
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/v_bar_chart_{category_col}_{value_col}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
+   
 def plot_horizontal_bar_chart(df: pd.DataFrame,
                         category_col: str,
                         value_col: str,
                         figsize_x: int = 8,
-                        figsize_y: int = 6):
+                        figsize_y: int = 6,
+                        fig_name: str = None):
    plt.figure(figsize=(figsize_x, figsize_y))
    
    # Sort dataframe by value_col descending
@@ -692,8 +719,11 @@ def plot_horizontal_bar_chart(df: pd.DataFrame,
    plt.gca().spines['right'].set_visible(False)
    
    plt.tight_layout()
-   plt.savefig(f'output/horizontal_bar_chart_{category_col}.svg', format='svg')
-
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/h_bar_chart_{category_col}_{value_col}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_lines_chart(df: pd.DataFrame,
                      x_col: str,
@@ -707,7 +737,8 @@ def plot_lines_chart(df: pd.DataFrame,
                      figsize_y: int = 5,
                      y_steps: int = None,
                      dynamic_ylim: bool = False,
-                     partial_data: bool = True):
+                     partial_data: bool = True,
+                     fig_name: str = None):
    plt.figure(figsize=(figsize_x, figsize_y))
    if partial_data:
       # 1. Separar los datos: todos menos el último, y los dos últimos
@@ -716,14 +747,14 @@ def plot_lines_chart(df: pd.DataFrame,
       # 2. Dibujar la línea sólida (Hasta 2024)
       plt.plot(complete_df[x_col], complete_df[values_col], 
                marker='o', linestyle='-', linewidth=linewidth, 
-               color=color, markersize=markersize)
+               color=color, markersize=markersize, zorder=5)
       # 3. Dibujar la línea punteada para el segmento final (2024 a 2025)
       plt.plot(partial_df[x_col], partial_df[values_col], 
                marker='o', linestyle='--', linewidth=linewidth, 
-               color=color, alpha=0.8, markersize=markersize)
+               color=color, alpha=0.8, markersize=markersize, zorder=5)
    else:
       plt.plot(df[x_col], df[values_col], marker='o', linestyle='-', 
-            linewidth=linewidth, markersize=markersize, color=color)
+            linewidth=linewidth, markersize=markersize, color=color, zorder=5)
    
    # Set font of yticks and xticks
    plt.xticks(fontsize=14, fontweight='regular')
@@ -758,8 +789,11 @@ def plot_lines_chart(df: pd.DataFrame,
    plt.gca().spines['top'].set_visible(False)
    plt.gca().spines['right'].set_visible(False)
    plt.tight_layout()
-   plt.savefig(f'output/line_chart__{x_col}_{values_col}.svg', format='svg')
-
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/line_chart_{x_col}_{values_col}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_lines_chart_pivot(df: pd.DataFrame,
                      category_col: str,
@@ -767,7 +801,8 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                      y_label: str = None,
                      figsize_x: int = 6,
                      figsize_y: int = 4,
-                     partial_data: bool = True):
+                     partial_data: bool = True,
+                     fig_name: str = None):
    #1. Set the category column as the index so .loc[category] works
    df_plot = df.set_index(category_col)
    
@@ -795,7 +830,8 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                   label=category, 
                   color=colors_dict[category], 
                   linewidth=2.5, 
-                  markersize=10)
+                  markersize=10,
+                  zorder=5)
          # Plot dashed line for last segment
          plt.plot(x_indices[-2:], df_plot.loc[category].iloc[-2:], 
                   marker=markers, 
@@ -804,14 +840,16 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
                   linewidth=2.5, 
                   linestyle='--', 
                   alpha=0.8,
-                  markersize=10)
+                  markersize=10,
+                  zorder=5)
       else:
          plt.plot(x_indices, df_plot.loc[category], 
                marker=markers, 
                label=category, 
                color=colors_dict[category], 
                linewidth=2.5, 
-               markersize=10)
+               markersize=10,
+               zorder=5)
 
    # 4. Formatting
    if y_label is not None:
@@ -836,7 +874,11 @@ def plot_lines_chart_pivot(df: pd.DataFrame,
    plt.gca().spines['right'].set_visible(False)
 
    plt.tight_layout()
-   plt.savefig(f'output/line_chart_{category_col}.svg', format='svg')
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/line_chart_pivot_{category_col}_{x_indices}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
 
 def plot_stacked_bar_chart(df: pd.DataFrame,
                         index_col: str,
@@ -844,12 +886,15 @@ def plot_stacked_bar_chart(df: pd.DataFrame,
                         y_label: str,
                         figsize_x: int = 8,
                         figsize_y: int = 6,
-                        custom_colors: bool = False):
+                        rotation_x_ticks: int = 0,
+                        custom_colors: bool = False,
+                        fig_name: str = None):
    plt.figure(figsize=(figsize_x, figsize_y))
    
    df.set_index(index_col, inplace=True)
 
    # Colors
+   cols = df.columns.tolist()
    colors = get_gradient_cmap(num_colors=len(df.columns)) if custom_colors else None
    
    # 2. Create the plot
@@ -860,16 +905,12 @@ def plot_stacked_bar_chart(df: pd.DataFrame,
                edgecolor='white')
 
    # 3. Customization
-   plt.xlabel(x_label, fontsize=15, fontweight='bold')
-   plt.ylabel(y_label, fontsize=15, fontweight='bold')
+   plt.xlabel(x_label, fontsize=15, fontweight='bold', labelpad=15)
+   plt.ylabel(y_label, fontsize=15, fontweight='bold', labelpad=15)
    #Set fontsize of x ticks and y ticks
-   plt.xticks(fontsize=14, fontweight='regular')
+   plt.xticks(fontsize=14, fontweight='regular', rotation=rotation_x_ticks)
    plt.yticks(fontsize=14, fontweight='regular')
 
-   #Add padding into x_label and y_label
-   plt.xlabel(plt.gca().get_xlabel(), labelpad=15)
-   plt.ylabel(plt.gca().get_ylabel(), labelpad=15)
-   plt.xticks(rotation=0)
    plt.grid(axis='y', linestyle=':', alpha=0.7)
    plt.gca().spines['top'].set_visible(False)
    plt.gca().spines['right'].set_visible(False)
@@ -878,4 +919,79 @@ def plot_stacked_bar_chart(df: pd.DataFrame,
    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12)
 
    plt.tight_layout()
-   plt.savefig(f'output/stacked_bar_chart_{index_col}.svg', format='svg')
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/stack_bar_chart_{index_col}_{cols}'
+   fig = plt.gcf()
+   __save_figure(fig, fig_name)
+   plt.close()
+
+def plot_dynamic_bars(df: pd.DataFrame, 
+                     index_col: str,
+                     y_label: str,
+                     x_label: str = None,
+                     figsize_x: int = 8,
+                     figsize_y: int = 6,
+                     rotation_x_ticks: int = 0,
+                     fig_name: str = None):
+   # 1. Prepare Data: Set the chosen column as index
+   # We create a copy so we don't modify the original dataframe outside the function
+   plot_df = df.set_index(index_col).copy()
+   
+   # 2. Setup Dimensions
+   categories = plot_df.index
+   cols = plot_df.columns
+   n_cols = len(cols)
+   
+   x = np.arange(len(categories)) 
+   # Total width for all bars in a group is 0.8; divide by number of bars
+   width = 0.8 / n_cols  
+   
+   # Custom Palette
+   colors = get_gradient_cmap(num_colors=n_cols)
+   
+   # 3. Create Plot
+   fig, ax = plt.subplots(figsize=(figsize_x, figsize_y))
+
+   # 4. Generate Bars
+   for i, col in enumerate(cols):
+      # Math to center the group of bars
+      offset = (i - (n_cols - 1) / 2) * width
+      
+      rects = ax.bar(x + offset, plot_df[col], width, 
+                     label=str(col), 
+                     color=colors[i % len(colors)])
+      
+      # Add the numeric labels on top
+      #ax.bar_label(rects, padding=3, color='white', fontweight='bold', fontsize=10)
+
+   # 3. Customization
+   if x_label:
+      plt.xlabel(x_label, fontsize=15, fontweight='bold', labelpad=15)
+   plt.ylabel(y_label, fontsize=15, fontweight='bold', labelpad=15)
+
+   plt.xticks(rotation=rotation_x_ticks)
+   ax.set_xticks(x)
+   ax.set_xticklabels(categories, fontsize=12)
+   
+   # Clean up axes
+   ax.tick_params(axis='y')
+   ax.yaxis.grid(True, linestyle='--', alpha=0.2, color='gray')
+   ax.set_axisbelow(True)
+   
+   for spine in ['top', 'right']:
+      ax.spines[spine].set_visible(False)
+
+   # Legend
+   legend = ax.legend(
+      frameon=False, 
+      loc='upper left', 
+      bbox_to_anchor=(1, 1),
+      fontsize=10  # Sets font size for all legend text
+   )
+
+   plt.tight_layout()
+
+   #Save into png, svg and eps
+   fig_name = f'output/{fig_name}' if fig_name else f'output/dynamic_bar_chart_{index_col}_{cols}'
+   __save_figure(fig, fig_name)
+   plt.close()
