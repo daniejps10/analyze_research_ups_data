@@ -1157,6 +1157,42 @@ def generate_rector_book_graphs():
    #--------------------------------------------------------------------------------------
    proy_df = __get_proy_data()
 
+   #Filter by RANGO_INICIO between 2020 and 2025
+   mask = proy_df['RANGO_INICIO'].between(2020, 2025)
+   range_proy_df = proy_df[mask]
+
+   #Count projects by init year
+   count_proy_year_df = util.count_unique_data_by_column(range_proy_df,
+                                                ['RANGO_INICIO'],
+                                                'CODIGO_PROYECTO',
+                                                'N.Proyectos')
+   book_data.append(LINE)
+   book_data.append("Proyectos por año de inicio.")
+   book_data.append(count_proy_year_df.to_string(index=False))
+   #Plot line chart
+   ch.plot_lines_chart(count_proy_year_df.copy(),
+                     x_col='RANGO_INICIO',
+                     x_label='Año',
+                     values_col='N.Proyectos',
+                     linewidth=4,
+                     markersize=10,
+                     figsize_x=6,
+                     figsize_y=4,
+                     dynamic_ylim=True,
+                     y_steps=20)
+   
+   #Filter by RANGO_INICIO 2025
+   mask = proy_df['RANGO_INICIO'].isin([2025])
+   current_proy_df = proy_df[mask]
+   #Count projects by area
+   count_proy_area_df = util.count_unique_data_by_column(current_proy_df,
+                                                ['AREA_CACES'],
+                                                'CODIGO_PROYECTO',
+                                                'N.Proyectos')
+   book_data.append(LINE)
+   book_data.append("Proyectos por área CACES en el año 2025.")
+   book_data.append(count_proy_area_df.to_string(index=False))
+
    #Save data to txt file
    print('\n'.join(book_data))
    util.save_txt_file('\n'.join(book_data), f'output/rector_book_graphs.txt')
