@@ -36,8 +36,11 @@ def get_region(name):
       return "Error"
    
 def process_institutions_data(year: int):
+   print(settings.LINE)
+   print("Analyzing institutions data...")
+   print(settings.LINE)
+
    #Process institutions data
-   print('Processing institutions data...')
    print('Get publications data...')
    pub_df = loader.get_all_pure_publications_data()
    #Apply filters

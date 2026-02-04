@@ -5,6 +5,10 @@ from src.data import loader
 from src.config import settings
 
 def analyze_projects_data(year: int):
+   print(settings.LINE)
+   print("Analyzing projects data...")
+   print(settings.LINE)
+
    #Analyze projects data
    #####################################################################################
    proy_data = []

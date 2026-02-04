@@ -5,6 +5,11 @@ from src.data import loader
 from src.config import settings
 
 def analyze_areas_data(year: int):
+
+   print(settings.LINE)
+   print("Analyzing areas (publications/projects) data...")
+   print(settings.LINE)
+
    areas_data = []
    areas_data.append(settings.LINE)
    all_areas = set()

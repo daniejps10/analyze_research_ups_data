@@ -5,6 +5,10 @@ from src.data import loader
 from src.config import settings
 
 def generate_rector_book_graphs():
+   print(settings.LINE)
+   print("Analyzing groups data...")
+   print(settings.LINE)
+   
    book_data = []
    book_data.append(settings.LINE)
    #Method to generate graphs for rector's book

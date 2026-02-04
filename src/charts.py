@@ -190,9 +190,9 @@ def plot_distribution_by_two_groups(df: pd.DataFrame,
          if kind == "bar":
             bars = ax.bar(sub.index, sub.values, color=colors)
             #Set fontsize of x ticks
-            ax.set_xticklabels(ax.get_xticklabels(), fontsize=12, fontweight="regular")
+            ax.tick_params(axis='x', labelsize=10, labelcolor='black')
             #Set fontsize of y ticks
-            ax.set_yticklabels(ax.get_yticklabels(), fontsize=10, fontweight="regular")
+            ax.tick_params(axis='y', labelsize=10, labelcolor='black')
             #Remove top and right borders
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)

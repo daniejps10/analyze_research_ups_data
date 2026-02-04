@@ -5,8 +5,12 @@ from src.data import loader
 from src.config import settings
 
 def analyze_groups_data(year: int = 2025):
+   print(settings.LINE)
+   print("Analyzing groups data...")
+   print(settings.LINE)
+
    groups_data = []
-   print("Previous year")
+   print("Getting previous year groups data...")
    #Read researchers and projects data
    inv_groups_df = loader.get_affiliations_data(year=year-1)
    

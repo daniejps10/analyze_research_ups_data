@@ -5,6 +5,11 @@ from src.data import loader
 from src.config import settings
 
 def analyze_publications_data(year: int):
+
+   print(settings.LINE)
+   print("Analyzing publications data...")
+   print(settings.LINE)
+
    pub_data = []
    pub_data.append(settings.LINE)
 
