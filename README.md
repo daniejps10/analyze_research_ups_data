@@ -15,13 +15,17 @@ It reads raw data from Excel files, computes statistics (growth, distribution), 
 ## Directory Structure
 
 ```
-├── main.py          # Main script to run the analyses
-├── charts.py        # Module for plotting functions
-├── gestion_coordinaciones.py # Script for analyzing coordination management
-├── util.py          # Utility functions
-├── input/           # Directory containing source Excel files
-├── output/          # Directory where reports and charts are saved
-└── ups.png          # Logo or asset used in charts
+├── main.py                    # Main entry point to run the analyses
+├── gestion_coordinaciones.py  # Standalone script for analyzing coordination management
+├── src/                       # Source code directory
+│   ├── analysis/              # Business logic for specific domains (groups, areas, etc.)
+│   ├── config/                # Configuration and constants paths
+│   ├── data/                  # Data loading and cleaning functions
+│   ├── utils/                 # General utility functions
+│   └── charts.py              # Plotting functions
+├── input/                     # Directory containing source Excel files
+├── output/                    # Directory where reports and charts are saved
+└── ups.png                    # Logo or asset used in charts
 ```
 
 ## Prerequisites
