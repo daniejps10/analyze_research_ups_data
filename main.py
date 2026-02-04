@@ -6,10 +6,10 @@ warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 if __name__ == '__main__':
    #Step 1: Analyze groups data
-   groups.analyze_groups_data(year=2025)
+   #groups.analyze_groups_data(year=2025)
    
    #Step 2: Analyze areas data
-   areas.analyze_areas_data(year=2025)
+   #areas.analyze_areas_data(year=2025)
    
    #Step 3: Analyze publications
    #publications.analyze_publications_data(year=2025)
@@ -18,7 +18,7 @@ if __name__ == '__main__':
    #projects.analyze_projects_data(year=2025)
    
    #Step 5: Generate graphs for rector's book
-   #rector_report.generate_rector_book_graphs()
+   rector_report.generate_rector_book_graphs()
    
    #Step 6: Process institutions data
    #institutions.process_institutions_data(year=2025)

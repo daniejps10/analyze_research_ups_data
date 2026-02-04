@@ -6,7 +6,7 @@ from src.config import settings
 
 def generate_rector_book_graphs():
    print(settings.LINE)
-   print("Analyzing groups data...")
+   print("Process rector book graphs data...")
    print(settings.LINE)
    
    book_data = []
@@ -173,7 +173,7 @@ def generate_rector_book_graphs():
                            y_label='N.Publicaciones',
                            figsize_x=6,
                            figsize_y=4,
-                           fig_name=f'publicaciones_campus_year')
+                           fig_name=f'publicaciones_campus_{filter_years}')
 
 
    #Count publications by year, campus and group legend
@@ -253,7 +253,7 @@ def generate_rector_book_graphs():
                            x_label='Año',
                            y_label='N.Publicaciones',
                            custom_colors=True,
-                           fig_name='publications_ups')
+                           fig_name=f'publications_ups_{filter_years}')
    #Melt dataframe
    # melted_caces_df = count_caces_year_df.melt(id_vars=['ANIO_PUBLICACION'],
    #                                           value_vars=CACES_COLS,
@@ -273,7 +273,7 @@ def generate_rector_book_graphs():
                            y_label='N.Publicaciones',
                            rotation_x_ticks=90,
                            custom_colors=True,
-                           fig_name='publications_ups_transposed')
+                           fig_name=f'publications_tipo_ups_{filter_years}')
    
    #Count CACES data type by year and campus, analysis year only
    analysis_pub_groups_caces_df = pub_groups_caces_df[pub_groups_caces_df['ANIO_PUBLICACION'] == analysis_year]
@@ -293,7 +293,7 @@ def generate_rector_book_graphs():
                            figsize_x=10,
                            figsize_y=6,
                            custom_colors=True,
-                           fig_name=f'analysis_{analysis_year}_publications_ups_campus_transposed')
+                           fig_name=f'publications_ups_campus_{analysis_year}')
 
    #Count CACES data type by year and campus
    count_caces_year_campus_df = (pub_groups_caces_df.groupby(['SEDE_ADMINISTRADOR', 'ANIO_PUBLICACION'])
@@ -317,7 +317,7 @@ def generate_rector_book_graphs():
                               figsize_x=10,
                               figsize_y=6,
                               custom_colors=True,
-                              fig_name=f'publications_{campus.lower().replace(" ", "_")}_transposed')
+                              fig_name=f'publications_{campus.lower().replace(" ", "_")}')
 
    #Projects
    #--------------------------------------------------------------------------------------
@@ -342,6 +342,7 @@ def generate_rector_book_graphs():
                      figsize_x=6,
                      figsize_y=4,
                      dynamic_ylim=True,
+                     partial_data=False,
                      y_steps=20)
    count_proy_year_df = util.calculate_growth_cagr_acumulative_df(count_proy_year_df, 
                                                             'RANGO_INICIO', 
