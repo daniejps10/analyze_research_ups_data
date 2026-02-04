@@ -4,7 +4,14 @@ import charts as ch
 import warnings
 import util
 
+from tqdm import tqdm
+from geopy.geocoders import Nominatim
+import pycountry_convert as pc
+
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+
+# Initialize geocoder (user_agent can be any name)
+geolocator = Nominatim(user_agent="my_country_detector")
 
 LINE = '-'*90
 SGI_STATS_XLSX = 'input/sgi_stats.xlsx'
@@ -15,11 +22,11 @@ COLABORATORS_XLSX = 'input/colaboradores_07_10_2025.xlsx'
 INV_PROFILES_XLSX = 'input/inv_profiles.xlsx'
 ALL_PURE_PUBLICATIONS_XLSX = 'input/All_Pure_Publications.xlsx'
 ALL_SJR_JCR_PUBLICATIONS_XLSX = 'input/all_publications_sjr_jcr.xlsx'
+PURE_AUT_ORG_XLSX = 'input/Publicacion_Autor_Org.xlsx'
+SCIVAL_INSTITUTIONS_XLSX = 'input/Institutions_collaborating_with_Universidad_Politécnica_Salesiana.xlsx'
 SCOPUS_PUB_XLSX = 'input/scopus.xlsx'
 WOS_PUB_XLSX = 'input/savedrecs.xls'
 SGI_GROUPS_XLSX = 'input/debug_groups.xlsx'
-
-
 
 ##############################################################################
 # Process groups data
@@ -170,7 +177,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
                                  kind="bar")
 
    #Count by Sede, Title and Genero
-   inv_sede_title_gender_df = util.util.count_unique_data_by_column(inv_groups_df, 
+   inv_sede_title_gender_df = util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Sede','Titulo','Género'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_sede_title_gender_df['N.Investigadores'].sum()
@@ -183,7 +190,7 @@ def analyze_groups_data(year: int = 2025) -> pd.DataFrame:
                                     value_col="N.Investigadores", 
                                     kind="pie")
    #Count by Sede, Género and Title
-   inv_sede_gender_title_df = util.util.count_unique_data_by_column(inv_groups_df, 
+   inv_sede_gender_title_df = util.count_unique_data_by_column(inv_groups_df, 
                                                          ['Sede','Género','Titulo'], 
                                                          'IDENTIFICADOR', 'N.Investigadores')
    total_inv = inv_sede_gender_title_df['N.Investigadores'].sum()
@@ -1205,6 +1212,95 @@ def generate_rector_book_graphs():
    print('\n'.join(book_data))
    util.save_txt_file('\n'.join(book_data), f'output/rector_book_graphs.txt')
 
+def __get_sival_institutions_data() -> pd.DataFrame:
+   #Read SciVal institutions data
+   scival_inst_df = pd.read_excel(SCIVAL_INSTITUTIONS_XLSX,
+                           sheet_name='instituciones')
+   return scival_inst_df.drop_duplicates()
+
+def __get_all_pub_aut_org_data() -> pd.DataFrame:
+   #Read all institutions data
+   pub_aut_org_df = pd.read_excel(PURE_AUT_ORG_XLSX,
+                           sheet_name='Sheet0',
+                           converters={'CODIGO_PURE': str})
+   pub_aut_org_df['CODIGO_PURE'] = pub_aut_org_df['CODIGO_PURE'].str.replace("'", '', regex=False)
+   return pub_aut_org_df.drop_duplicates()
+
+def __get_region(name):
+   try:
+      # Search for the country (handles Spanish & English)
+      location = geolocator.geocode(name, language='en', timeout=10)
+      if not location:
+         return "Not Found"
+
+      # Extract country name and convert to 2-letter code (ISO)
+      # We take the last part of the address which is usually the country
+      full_address = location.address.split(",")
+      country_en = full_address[-1].strip()
+      
+      country_code = pc.country_name_to_country_alpha2(country_en)
+      continent_code = pc.country_alpha2_to_continent_code(country_code)
+
+      # Map to your specific Spanish regions
+      region_map = {
+         'NA': 'América del Norte',
+         'SA': 'América del Sur',
+         'EU': 'Europa',
+         'AF': 'África',
+         'AS': 'Asia',
+         'OC': 'Oceanía'
+      }
+      return region_map.get(continent_code, "Other")
+   except Exception:
+      return "Error"
+   
+def process_institutions_data(year: int):
+   #Process institutions data
+   print('Processing institutions data...')
+   print('Get publications data...')
+   pub_df = __get_all_pure_publications_data()
+   #Apply filters
+   pub_df = pub_df[pub_df['ANIO_PUBLICACION'].isin([year])]
+   pub_ids = pub_df['CODIGO_PURE'].unique().tolist()
+   print(f'Number of publications in {year}: {len(pub_ids)}')
+   
+   print('Get publication-author-organization data...')
+   pub_aut_org_df = __get_all_pub_aut_org_data()
+   #Extrac relevant columns
+   pub_aut_org_df = pub_aut_org_df[['CODIGO_PURE', 'Source ID']]
+   #Apply filters
+   pub_aut_org_df = pub_aut_org_df[pub_aut_org_df['CODIGO_PURE'].isin(pub_ids)]
+   #Drop na values
+   pub_aut_org_df = pub_aut_org_df.dropna(subset=['Source ID']).drop_duplicates()
+   #Keep only int Source ID values
+   pub_aut_org_df = pub_aut_org_df[pub_aut_org_df['Source ID'].apply(lambda x: str(x).isdigit())]
+   pub_aut_org_df['Source ID'] = pub_aut_org_df['Source ID'].astype(int)
+   pub_aut_org_df = pub_aut_org_df.reset_index(drop=True).copy().drop_duplicates()
+   ins_ids = pub_aut_org_df['Source ID'].unique().tolist()
+   print(f'Number of publication-author-organization records with Scopus source ID in {year}: {len(pub_aut_org_df)}')
+
+   #Read SciVal institutions data
+   scival_inst_df = __get_sival_institutions_data()
+   #Keep only relevant columns
+   scival_inst_df = scival_inst_df[['Institution ID', 'Institution',
+                                    'Sector', 'Country/Region']]
+   scival_inst_df = scival_inst_df.drop_duplicates()
+   scival_inst_df = scival_inst_df[scival_inst_df['Institution ID'].isin(ins_ids)]
+   print(f'Number of SciVal institutions matching publication-author-organization records in {year}: {len(scival_inst_df)}')
+
+   #Get region for each institution
+   print('Getting regions for institutions...')
+   countries_df = scival_inst_df[['Country/Region']].drop_duplicates().reset_index(drop=True)
+   tqdm.pandas(desc="Mapping countries to regions")
+   countries_df['Region'] = countries_df['Country/Region'].progress_apply(__get_region)
+
+   #Merge regions back to institutions
+   scival_inst_df = scival_inst_df.merge(countries_df, on='Country/Region', how='left')
+
+   #Save to Excel
+   print('Saving to Excel...')
+   scival_inst_df.to_excel(f'output/SciVal_Institutions_{year}.xlsx', index=False)
+
 if __name__ == '__main__':
    #Step 1: Analyze groups data
    #analyze_groups_data(year=2025)
@@ -1215,4 +1311,6 @@ if __name__ == '__main__':
    #Step 4: Analyze projects
    #analyze_projects_data(year=2025)
    #Step 5: Generate graphs for rector's book
-   generate_rector_book_graphs()
+   #generate_rector_book_graphs()
+   #Step 6: Process institutions data
+   process_institutions_data(year=2025)

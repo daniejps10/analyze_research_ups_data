@@ -17,6 +17,8 @@ It reads raw data from Excel files, computes statistics (growth, distribution), 
 ```
 ├── main.py          # Main script to run the analyses
 ├── charts.py        # Module for plotting functions
+├── gestion_coordinaciones.py # Script for analyzing coordination management
+├── util.py          # Utility functions
 ├── input/           # Directory containing source Excel files
 ├── output/          # Directory where reports and charts are saved
 └── ups.png          # Logo or asset used in charts
@@ -44,23 +46,36 @@ pip install pandas numpy matplotlib seaborn adjustText xlsxwriter openpyxl
 
 The script expects the following Excel files in the `input/` directory:
 
-- `sgi_stats.xlsx`
-- `Publications_Cites_Scopus.xlsx`
-- `Researcher_Scopus_H_Index.xlsx`
-- `colaboradores_07_10_2025.xlsx`
-- `inv_profiles.xlsx`
 - `All_Pure_Publications.xlsx`
+- `Publicacion_Autor_Org.xlsx`
+- `Publications_Cites_Scopus.xlsx`
 - `all_publications_sjr_jcr.xlsx`
+- `colaboradores_07_10_2025.xlsx`
+- `debug_groups.xlsx`
+- `inv_profiles.xlsx`
+- `savedrecs.xls`
 - `scopus.xlsx`
-- `savedrecs.xls` (Web of Science data)
+- `sgi_stats.xlsx`
 
 ## Usage
+
+### Main Analysis
 
 To run the complete analysis, execute the `main.py` script from the project root:
 
 ```bash
 python main.py
 ```
+
+### Coordination Management Analysis
+
+To generate the coordination management charts, run:
+
+```bash
+python gestion_coordinaciones.py
+```
+
+This script requires `gestion_coordinaciones_2025.xlsx` and generates `coordinaciones_2025.svg` and `coordinaciones_2025.png`.
 
 ## Analysis workflow
 
